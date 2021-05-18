@@ -1,0 +1,28 @@
+#cloud-config
+ssh_pwauth: true
+users:
+  - name: ${admin_user}
+    groups: sudo
+    lock_passwd: false
+    passwd: ${admin_password}
+    shell: /bin/bash
+timezone: Europe/Moscow
+write_files:
+- content: |
+    #!/bin/bash
+    zabbix_server="${zabbix_server}"
+    if [[ $zabbix_server != "" ]]; then
+      wget https://repo.zabbix.com/zabbix/5.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_5.0-1+$(lsb_release -c -s)_all.deb
+      dpkg -i zabbix-release_5.0-1+$(lsb_release -c -s)_all.deb
+      apt-get update -y
+      apt-get install -y zabbix-agent
+      sed -i 's/Server=127.0.0.1/Server=${zabbix_server}/' /etc/zabbix/zabbix_agentd.conf
+      sed -i 's/ServerActive=127.0.0.1/ServerActive=${zabbix_server}/' /etc/zabbix/zabbix_agentd.conf
+      sed -i 's/Hostname=Zabbix\sserver/#Hostname=/' /etc/zabbix/zabbix_agentd.conf
+      systemctl restart zabbix-agent
+    fi
+  path: /run/cloud-init/install_zabbix_agent.sh
+runcmd:
+  - apt-get update -y
+  - apt-get upgrade -y
+  - [bash, /run/cloud-init/install_zabbix_agent.sh]
